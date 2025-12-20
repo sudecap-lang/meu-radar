@@ -2,14 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "radar.py",
+      "src": "index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "index.py"
+    },
+    {
       "src": "/(.*)",
-      "dest": "radar.py"
+      "dest": "index.py"
     }
   ]
 }
