@@ -5,7 +5,6 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configuração de alcance do radar
 RAIO_KM = 25.0 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -39,73 +38,145 @@ def index():
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
 
         <style>
-            :root {{ --sky-blue: #87CEEB; --yellow: #FFD700; }}
-            body {{ background: #F0F4F7; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }}
+            :root {{ 
+                --sky-blue: #87CEEB; 
+                --navy: #2A6E91; 
+                --yellow: #FFD700; 
+            }}
             
+            body {{ 
+                background: #F0F4F7; 
+                margin: 0; 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                min-height: 100vh; 
+                font-family: sans-serif; 
+                padding: 10px;
+            }}
+            
+            /* BARRA DE PESQUISA SLIM */
             #search-box {{ 
-                background: white; width: 90%; max-width: 800px; padding: 15px; border-radius: 12px; 
-                display: none; gap: 10px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                background: white; 
+                width: 100%; 
+                max-width: 850px; 
+                padding: 10px 15px; 
+                border-radius: 8px; 
+                display: none; 
+                gap: 10px; 
+                margin-bottom: 15px; 
+                box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+                transition: opacity 0.6s ease, transform 0.6s ease;
+                z-index: 100;
             }}
-            #search-box input {{ flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }}
-            #search-box button {{ background: var(--sky-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }}
+            
+            .hide-search {{ opacity: 0; transform: translateY(-10px); pointer-events: none; }}
 
+            #search-box input {{ flex: 1; border: 1px solid #ddd; padding: 8px; border-radius: 5px; outline: none; }}
+            #search-box button {{ background: var(--navy); color: white; border: none; padding: 0 15px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }}
+
+            /* DESIGN DO BILHETE */
             .ticket {{ 
-                background: white; width: 95%; max-width: 850px; height: 500px; 
-                border-radius: 25px; display: flex; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.15); 
+                background: white; 
+                width: 100%; 
+                max-width: 850px; 
+                height: 480px; 
+                border-radius: 25px; 
+                display: flex; 
+                overflow: hidden; 
+                box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+                position: relative;
             }}
+            
             .stub {{ 
-                background: var(--sky-blue); width: 230px; padding: 30px; color: white; 
-                display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.4); 
+                background: var(--navy); 
+                width: 220px; 
+                padding: 30px; 
+                color: white; 
+                display: flex; 
+                flex-direction: column; 
+                border-right: 2px dashed rgba(255,255,255,0.3); 
             }}
-            .seat {{ font-size: 85px; font-weight: 900; margin: 10px 0; line-height: 1; letter-spacing: -2px; }}
-            .dot-container {{ display: flex; gap: 6px; margin-top: 15px; }}
-            .dot {{ width: 12px; height: 12px; background: rgba(255,255,255,0.3); border-radius: 2px; }}
-
-            .main {{ flex: 1; display: flex; flex-direction: column; }}
-            .header {{ background: var(--sky-blue); color: white; padding: 22px; text-align: center; letter-spacing: 10px; font-size: 24px; text-transform: uppercase; }}
+            
+            .seat {{ font-size: 80px; font-weight: 900; margin: 10px 0; line-height: 1; }}
+            
+            .main {{ flex: 1; display: flex; flex-direction: column; position: relative; }}
+            
+            .header {{ 
+                background: var(--sky-blue); 
+                color: white; 
+                padding: 20px; 
+                text-align: center; 
+                letter-spacing: 8px; 
+                font-size: 22px; 
+                text-transform: uppercase; 
+                font-weight: bold; 
+            }}
             
             .info-grid {{ padding: 30px 40px; display: grid; grid-template-columns: 1.4fr 1fr; flex: 1; }}
-            .label {{ color: #AAA; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }}
+            .label {{ color: #BBB; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }}
             
-            .flapper .digit {{ background-color: #1A1A1A !important; color: var(--yellow) !important; border-radius: 4px !important; }}
+            /* AJUSTE DAS PLAQUINHAS PARA NÃO INVADIR O BILHETE */
+            .flapper .digit {{ 
+                background-color: #1A1A1A !important; 
+                color: var(--yellow) !important; 
+                border-radius: 3px !important; 
+                border: 1px solid #333 !important;
+            }}
             
-            #compass {{ font-size: 55px; color: #FF8C00; transition: transform 0.8s; margin: 15px 0; }}
-            #barcode {{ width: 180px; height: 60px; }}
-
-            .footer {{ background: #000; height: 80px; border-top: 5px solid var(--yellow); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }}
-            .status-msg {{ color: var(--yellow); font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px; position: absolute; opacity: 0; transition: opacity 0.8s; text-transform: uppercase; }}
+            #compass {{ font-size: 50px; color: #FF8C00; transition: transform 1s; margin: 15px 0; }}
+            
+            /* BARRA PRETA DE STATUS EXCLUSIVA ABAIXO */
+            .footer {{ 
+                background: #000; 
+                height: 70px; 
+                border-top: 5px solid var(--yellow); 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                width: 100%;
+                overflow: hidden;
+            }}
+            
+            .status-msg {{ 
+                color: var(--yellow); 
+                font-family: 'Courier New', monospace; 
+                font-weight: bold; 
+                font-size: 18px; 
+                position: absolute; 
+                opacity: 0; 
+                transition: opacity 0.6s; 
+                text-transform: uppercase;
+                pointer-events: none;
+            }}
+            
             .status-msg.active {{ opacity: 1; }}
         </style>
     </head>
     <body>
         <div id="search-box">
-            <input type="text" id="addr" placeholder="Digite sua cidade para o Radar...">
-            <button onclick="manualSearch()">ATIVAR RADAR</button>
+            <input type="text" id="addr" placeholder="Digite sua localização (Ex: São Paulo)">
+            <button onclick="manualSearch()">BUSCAR</button>
         </div>
 
         <div class="ticket">
             <div class="stub">
-                <div style="font-size: 11px; font-weight: bold; opacity: 0.9;">FLIGHT RADAR STATION</div>
-                <div style="font-size: 14px; margin-top: 15px; font-weight: bold;">SEAT:</div>
+                <div style="font-size: 10px; opacity: 0.8; letter-spacing: 1px;">FLIGHT STATION</div>
+                <div style="font-size: 13px; margin-top: 20px; font-weight: bold;">SEAT</div>
                 <div class="seat">19 A</div>
-                <div class="dot-container">
-                    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                </div>
-                <div style="margin-top: auto; font-size: 16px; font-weight: bold; letter-spacing: 1px;">ATC CONNECTED</div>
+                <div style="margin-top: auto; font-size: 15px; font-weight: bold; text-align: center; border: 1px solid white; padding: 5px;">ATC OK</div>
             </div>
             <div class="main">
-                <div class="header">BOARDING BOARD</div>
+                <div class="header">BOARDING RADAR</div>
                 <div class="info-grid">
                     <div>
-                        <div class="label">Ident / Flight (10 Chars)</div>
+                        <div class="label">Flight (10 Chars)</div>
                         <input id="f_call" class="flap">
                         <div class="label" style="margin-top:20px">Distance (KM)</div>
                         <input id="f_dist" class="flap">
-                        <div class="label" style="margin-top:20px">Altitude (FT)</div>
-                        <input id="f_alt" class="flap">
                     </div>
                     <div style="display:flex; flex-direction:column; align-items:center; border-left: 1px solid #F0F0F0; padding-left: 20px;">
-                        <div class="label">A/C Type (8 Chars)</div>
+                        <div class="label">Type (8 Chars)</div>
                         <input id="f_type" class="flap">
                         <div id="compass">↑</div>
                         <svg id="barcode"></svg>
@@ -119,14 +190,14 @@ def index():
         </div>
 
         <script>
-            // Configurações de colunas solicitadas
+            // CONFIGURAÇÃO DAS PLAQUINHAS (10 e 8)
             const $fCall = $('#f_call').flapper({{width: 10, chars_preset: 'alphanum'}});
             const $fDist = $('#f_dist').flapper({{width: 10, chars_preset: 'num'}});
-            const $fAlt = $('#f_alt').flapper({{width: 10, chars_preset: 'num'}});
             const $fType = $('#f_type').flapper({{width: 8, chars_preset: 'alphanum'}});
 
             let lat, lon, flightFound = false, msgIdx = 1;
 
+            // LÓGICA DAS MENSAGENS QUE GIRAM NA BARRA PRETA
             setInterval(() => {{
                 if(flightFound) return;
                 $(`#m${{msgIdx}}`).removeClass('active');
@@ -135,6 +206,10 @@ def index():
             }}, 4000);
 
             function start(la, lo) {{
+                const box = document.getElementById('search-box');
+                box.classList.add('hide-search');
+                setTimeout(() => box.style.display = 'none', 600);
+
                 lat = la; lon = lo;
                 setInterval(update, 8000);
                 update();
@@ -145,32 +220,28 @@ def index():
                 .then(res => res.json()).then(data => {{
                     if(data.found) {{
                         flightFound = true;
-                        $('#m1').addClass('active').text("TARGET ACQUIRED: " + data.callsign);
-                        $('#m2').removeClass('active');
+                        document.getElementById('m1').textContent = "TARGET: " + data.callsign;
                         $fCall.val(data.callsign).change();
-                        $fDist.val(data.dist + "KM").change();
-                        $fAlt.val(data.alt_ft + "FT").change();
+                        $fDist.val(data.dist + " KM").change();
                         $fType.val(data.type).change();
                         document.getElementById('compass').style.transform = `rotate(${{data.bearing}}deg)`;
-                        JsBarcode("#barcode", data.callsign, {{format: "CODE128", width: 1.4, height: 40, displayValue: false, lineColor: "#87CEEB"}});
+                        JsBarcode("#barcode", data.callsign, {{format: "CODE128", width: 1.2, height: 40, displayValue: false, lineColor: "#2A6E91"}});
                     }}
                 }});
             }}
 
             function manualSearch() {{
                 const q = document.getElementById('addr').value;
+                if(!q) return;
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${{q}}`)
                 .then(r => r.json()).then(res => {{
-                    if(res.length > 0) {{
-                        $('#search-box').hide();
-                        start(res[0].lat, res[0].lon);
-                    }}
+                    if(res.length > 0) start(res[0].lat, res[0].lon);
                 }});
             }}
 
             navigator.geolocation.getCurrentPosition(
                 p => start(p.coords.latitude, p.coords.longitude),
-                e => $('#search-box').css('display', 'flex')
+                e => document.getElementById('search-box').style.display = 'flex'
             );
         </script>
     </body>
@@ -192,7 +263,6 @@ def get_data():
                     "found": True, 
                     "callsign": ac.get('flight', 'UNKN').strip()[:10], 
                     "dist": str(round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1)), 
-                    "alt_ft": str(int(ac.get('alt_baro', 0))), 
                     "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
                     "type": ac.get('t', 'UNKN')[:8]
                 }})
