@@ -23,16 +23,14 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 
 @app.route('/')
 def index():
-    # Gerador de versão para forçar o Safari a ignorar o cache
     v = int(time.time())
     return render_template_string(f'''
     <!DOCTYPE html>
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-        <title>Boarding Board Radar v{v}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Radar Boarding Pass v{{v}}</title>
         
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-flapper/1.1.0/flapper.min.css">
@@ -40,186 +38,149 @@ def index():
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
 
         <style>
-            :root {{ 
-                --sky-blue: #87CEEB; 
-                --yellow-accent: #FFD700; 
-            }}
+            :root {{ --sky-blue: #87CEEB; --yellow: #FFD700; }}
+            body {{ background: #F0F4F7; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }}
             
-            body {{ 
-                background: #F0F4F7; margin: 0; display: flex; flex-direction: column; 
-                align-items: center; justify-content: center; min-height: 100vh; 
-                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                -webkit-font-smoothing: antialiased;
+            #search-box {{ 
+                background: white; width: 90%; max-width: 800px; padding: 15px; border-radius: 12px; 
+                display: none; gap: 10px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                transition: opacity 1s, transform 1s;
             }}
-            
-            #search-container {{ 
-                background: white; width: 90%; max-width: 850px; padding: 12px 20px; 
-                border-radius: 15px; display: none; gap: 15px; 
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 30px;
-                transition: opacity 0.8s ease, transform 0.8s ease; opacity: 1;
-            }}
-            #search-container.fade-out {{ opacity: 0; transform: translateY(-20px); pointer-events: none; }}
-            #search-container input {{ flex: 1; border: 1px solid #E0E0E0; padding: 12px; border-radius: 8px; font-size: 16px; outline: none; }}
-            #search-container button {{ background: var(--sky-blue); color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }}
+            #search-box.fade-out {{ opacity: 0; transform: translateY(-20px); pointer-events: none; }}
+            #search-box input {{ flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }}
+            #search-box button {{ background: var(--sky-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }}
 
             .ticket {{ 
-                background: white; width: 95%; max-width: 850px; height: 450px; 
-                border-radius: 20px; display: flex; overflow: hidden; 
-                box-shadow: 0 25px 50px rgba(0,0,0,0.1); position: relative; 
+                background: white; width: 90%; max-width: 850px; height: 460px; 
+                border-radius: 25px; display: flex; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.15); 
             }}
-            
             .stub {{ 
-                background: var(--sky-blue); width: 240px; padding: 35px 25px; 
-                color: white; display: flex; flex-direction: column; 
-                border-right: 2px dashed rgba(255,255,255,0.4); 
+                background: var(--sky-blue); width: 230px; padding: 30px; color: white; 
+                display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.4); 
             }}
-            .seat-num {{ font-size: 85px; font-weight: 900; margin: 10px 0; line-height: 1; letter-spacing: -2px; }}
+            .seat {{ font-size: 85px; font-weight: 900; margin: 10px 0; line-height: 1; letter-spacing: -2px; }}
             .dot-container {{ display: flex; gap: 6px; margin-top: 15px; }}
             .dot {{ width: 15px; height: 15px; background: rgba(255,255,255,0.3); border-radius: 3px; }}
 
             .main {{ flex: 1; display: flex; flex-direction: column; }}
-            .header-strip {{ background: var(--sky-blue); color: white; padding: 18px 45px; display: flex; justify-content: space-between; align-items: center; }}
-            .header-strip h1 {{ margin: 0; font-size: 24px; letter-spacing: 10px; font-weight: 400; text-transform: uppercase; }}
-
-            .info-grid {{ padding: 40px 50px; display: flex; flex: 1; }}
-            .data-col {{ flex: 1.4; }}
-            .visual-col {{ flex: 1; border-left: 1px solid #F0F0F0; padding-left: 30px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }}
-
+            .header {{ background: var(--sky-blue); color: white; padding: 22px; text-align: center; letter-spacing: 10px; font-size: 24px; text-transform: uppercase; }}
+            
+            .info-grid {{ padding: 35px 45px; display: grid; grid-template-columns: 1.4fr 1fr; flex: 1; }}
             .label {{ color: #AAA; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }}
             
-            /* Placar Split-Flap */
             .flapper .digit {{ 
                 background-color: #1A1A1A !important; 
-                color: var(--yellow-accent) !important; 
+                color: var(--yellow) !important; 
                 border-radius: 4px !important; 
+                border: 1px solid #333 !important;
             }}
-
-            #compass {{ font-size: 50px; color: #FF8C00; transition: transform 0.8s ease; }}
+            
+            #compass {{ font-size: 50px; color: #FF8C00; transition: transform 0.8s; margin: 15px 0; }}
             #barcode {{ width: 180px; height: 70px; }}
 
-            .footer-black {{ background: #000; height: 80px; border-top: 5px solid var(--yellow-accent); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }}
-            .status-wrapper {{ width: 100%; text-align: center; position: relative; height: 100%; }}
-            .status-msg {{ 
-                color: var(--yellow-accent); font-family: 'Courier New', Courier, monospace; 
-                font-weight: bold; font-size: 18px; text-transform: uppercase; 
-                position: absolute; width: 100%; left: 0; top: 50%; transform: translateY(-50%); 
-                transition: opacity 0.8s; opacity: 0; 
-            }}
+            .footer {{ background: #000; height: 75px; border-top: 5px solid var(--yellow); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }}
+            .status-msg {{ color: var(--yellow); font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px; position: absolute; opacity: 0; transition: opacity 0.8s; text-transform: uppercase; }}
             .status-msg.active {{ opacity: 1; }}
-
-            @media (max-width: 600px) {{
-                .ticket {{ height: auto; flex-direction: column; }}
-                .stub {{ width: 100%; box-sizing: border-box; border-right: none; border-bottom: 2px dashed #ddd; }}
-                .info-grid {{ flex-direction: column; padding: 20px; }}
-                .visual-col {{ border-left: none; border-top: 1px solid #eee; padding: 20px 0; }}
-            }}
         </style>
     </head>
     <body>
-
-        <div id="search-container">
-            <input type="text" id="address-input" placeholder="Digite Cidade ou CEP...">
-            <button onclick="buscarManual()">CONNECT</button>
+        <div id="search-box">
+            <input type="text" id="addr" placeholder="GPS Indisponível. Digite Cidade ou CEP...">
+            <button onclick="manualSearch()">CONECTAR</button>
         </div>
 
         <div class="ticket">
             <div class="stub">
-                <div style="font-size: 11px; font-weight: bold;">RADAR STATION</div>
+                <div style="font-size: 11px; font-weight: bold; opacity: 0.9;">RADAR STATION</div>
                 <div style="font-size: 14px; margin-top: 12px; font-weight: bold;">SEAT:</div>
-                <div class="seat-num">19 A</div>
+                <div class="seat">19 A</div>
                 <div class="dot-container">
                     <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
                     <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
                 </div>
-                <div style="margin-top: auto; font-size: 16px; font-weight: bold;">ATC SECURE</div>
+                <div style="margin-top: auto; font-size: 16px; font-weight: bold; letter-spacing: 1px;">ATC SECURE</div>
             </div>
-
             <div class="main">
-                <div class="header-strip">
-                    <span>✈</span><h1>BOARDING BOARD</h1><span>✈</span>
-                </div>
+                <div class="header">BOARDING BOARD</div>
                 <div class="info-grid">
-                    <div class="data-col">
-                        <div class="label">Callsign</div>
-                        <input id="flap_callsign" class="flap" />
-                        <div class="label">Distance</div>
-                        <input id="flap_dist" class="flap" />
-                        <div class="label">Altitude</div>
-                        <input id="flap_alt" class="flap" />
+                    <div>
+                        <div class="label">Ident / Flight</div>
+                        <input id="f_call" class="flap">
+                        <div class="label" style="margin-top:15px">Distance (KM)</div>
+                        <input id="f_dist" class="flap">
+                        <div class="label" style="margin-top:15px">Altitude (FT)</div>
+                        <input id="f_alt" class="flap">
                     </div>
-                    <div class="visual-col">
-                        <div style="text-align: center;">
-                            <div class="label">Type</div>
-                            <input id="flap_type" class="flap" />
-                        </div>
+                    <div style="display:flex; flex-direction:column; align-items:center; border-left: 1px solid #F0F0F0; padding-left: 20px;">
+                        <div class="label">A/C Type</div>
+                        <input id="f_type" class="flap">
                         <div id="compass">↑</div>
                         <svg id="barcode"></svg>
                     </div>
                 </div>
-                <div class="footer-black">
-                    <div class="status-wrapper">
-                        <div id="msg1" class="status-msg active">SCANNING...</div>
-                        <div id="msg2" class="status-msg">CLIMA: --°C</div>
-                        <div id="msg3" class="status-msg">METAR: VFR</div>
-                    </div>
+                <div class="footer">
+                    <div id="m1" class="status-msg active">SCANNING AIRSPACE...</div>
+                    <div id="m2" class="status-msg">TEMP: --°C | VIS: --KM</div>
+                    <div id="m3" class="status-msg">METAR: VFR OPS ONGOING</div>
                 </div>
             </div>
         </div>
 
         <script>
-            const optCall = {{ width: 10, chars_preset: 'alphanum' }};
-            const optDist = {{ width: 10, chars_preset: 'num' }};
-            const optAlt = {{ width: 10, chars_preset: 'num' }};
-            const optType = {{ width: 8, chars_preset: 'alphanum' }};
-
-            const $fCall = $('#flap_callsign').flapper(optCall);
-            const $fDist = $('#flap_dist').flapper(optDist);
-            const $fAlt = $('#flap_alt').flapper(optAlt);
-            const $fType = $('#flap_type').flapper(optType);
+            // Configuração das letras (10 colunas para Ident, 8 para Tipo)
+            const $fCall = $('#f_call').flapper({{width: 10, chars_preset: 'alphanum'}});
+            const $fDist = $('#f_dist').flapper({{width: 10, chars_preset: 'num'}});
+            const $fAlt = $('#f_alt').flapper({{width: 10, chars_preset: 'num'}});
+            const $fType = $('#f_type').flapper({{width: 8, chars_preset: 'alphanum'}});
 
             let lat, lon, flightFound = false, msgIdx = 1;
 
             setInterval(() => {{
-                if (flightFound) return;
-                $(`#msg${{msgIdx}}`).removeClass('active');
+                if(flightFound) return;
+                $(`#m${{msgIdx}}`).removeClass('active');
                 msgIdx = msgIdx === 3 ? 1 : msgIdx + 1;
-                $(`#msg${{msgIdx}}`).addClass('active');
-            }}, 4000);
+                $(`#m${{msgIdx}}`).addClass('active');
+            }}, 4500);
 
             function start(la, lo) {{
                 lat = la; lon = lo;
-                setInterval(fetchData, 8000);
-                fetchData();
+                setInterval(update, 8000);
+                update();
             }}
 
-            function fetchData() {{
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${{lat}}&longitude=${{lon}}&current=temperature_2m`)
+            function update() {{
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${{lat}}&longitude=${{lon}}&current=temperature_2m,visibility`)
                 .then(r => r.json()).then(w => {{
-                    document.getElementById('msg2').textContent = `TEMP: ${{Math.round(w.current.temperature_2m)}}°C`;
+                    const temp = Math.round(w.current.temperature_2m);
+                    const vis = (w.current.visibility/1000).toFixed(1);
+                    document.getElementById('m2').textContent = `TEMP: ${{temp}}°C | VISIB: ${{vis}}KM`;
                 }});
 
                 fetch(`/api/data?lat=${{lat}}&lon=${{lon}}&t=` + Date.now())
                 .then(res => res.json()).then(data => {{
                     if(data.found) {{
                         flightFound = true;
-                        $('#msg1').addClass('active').text("TARGET: " + data.callsign).siblings().removeClass('active');
+                        $('#m1').addClass('active').text("TARGET: " + data.callsign).siblings().removeClass('active');
                         $fCall.val(data.callsign).change();
                         $fDist.val(data.dist + "KM").change();
                         $fAlt.val(data.alt_ft + "FT").change();
                         $fType.val(data.type).change();
                         document.getElementById('compass').style.transform = `rotate(${{data.bearing}}deg)`;
-                        JsBarcode("#barcode", data.callsign, {{ format: "CODE128", width: 1.4, height: 45, displayValue: false, lineColor: "#87CEEB" }});
+                        JsBarcode("#barcode", data.callsign, {{format: "CODE128", width: 1.4, height: 45, displayValue: false, lineColor: "#87CEEB"}});
+                    }} else {{
+                        flightFound = false;
+                        document.getElementById('m1').textContent = "SCANNING AIRSPACE...";
                     }}
                 }});
             }}
 
-            function buscarManual() {{
-                const q = document.getElementById('address-input').value;
+            function manualSearch() {{
+                const q = document.getElementById('addr').value;
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${{q}}`)
                 .then(r => r.json()).then(res => {{
                     if(res.length > 0) {{
-                        $('#search-container').addClass('fade-out');
-                        setTimeout(() => $('#search-container').hide(), 1000);
+                        $('#search-box').addClass('fade-out');
+                        setTimeout(() => $('#search-box').hide(), 1000);
                         start(res[0].lat, res[0].lon);
                     }}
                 }});
@@ -227,7 +188,7 @@ def index():
 
             navigator.geolocation.getCurrentPosition(
                 p => start(p.coords.latitude, p.coords.longitude),
-                e => $('#search-container').css('display', 'flex')
+                e => $('#search-box').css('display', 'flex')
             );
         </script>
     </body>
@@ -242,17 +203,16 @@ def get_data():
         url = f"https://api.adsb.lol/v2/lat/{{lat_u}}/lon/{{lon_u}}/dist/{{RAIO_KM}}"
         r = requests.get(url, timeout=5).json()
         if r.get('ac'):
-            ac = sorted([a for a in r['ac'] if a.get('lat')], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-            return jsonify({{
-                "found": True, 
-                "callsign": ac.get('flight', 'UNKN').strip()[:10], 
-                "dist": str(round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1)), 
-                "alt_ft": str(int(ac.get('alt_baro', 0))), 
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "type": ac.get('t', 'UNKN')[:8]
-            }})
+            validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
+            if validos:
+                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+                return jsonify({{
+                    "found": True, 
+                    "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip()[:10], 
+                    "dist": str(round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1)), 
+                    "alt_ft": str(int(ac.get('alt_baro', 0))), 
+                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                    "type": ac.get('t', 'UNKN')[:8]
+                }})
     except: pass
     return jsonify({{"found": False}})
-
-if __name__ == '__main__':
-    app.run(debug=True)
