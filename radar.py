@@ -1,6 +1,5 @@
 from flask import Flask, render_template_string, jsonify, request
 import requests
-import time
 from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
@@ -35,129 +34,76 @@ def index():
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-flapper/1.1.0/jquery.flapper.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <style>
-            :root { 
-                --sky-blue: #87CEEB; /* AZUL CLARO QUE PEDISTE */
-                --navy: #2A6E91; 
-                --yellow: #FFD700; 
-            }
-            body { 
-                background: #E0F2F7; 
-                margin: 0; 
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                min-height: 100vh; 
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            }
+            :root { --sky-blue: #87CEEB; --navy: #2A6E91; --yellow: #FFD700; }
+            body { background: #F0F4F7; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; padding: 10px; }
             
+            /* BARRA DE PESQUISA SLIM */
             #search-box { 
-                background: white; 
-                width: 90%; 
-                max-width: 800px; 
-                padding: 10px; 
-                border-radius: 0 0 15px 15px; 
-                display: none; 
-                gap: 10px; 
-                box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
-                z-index: 100;
+                background: white; width: 100%; max-width: 850px; padding: 10px 15px; 
+                border-radius: 10px; display: none; gap: 10px; margin-bottom: 15px; 
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1000; border-top: 3px solid var(--sky-blue);
+                align-items: center;
             }
-            #search-box input { flex: 1; border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
-            #search-box button { background: var(--sky-blue); color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+            #search-box input { flex: 1; border: 1px solid #ddd; padding: 10px; border-radius: 5px; outline: none; }
+            #search-box button { background: var(--navy); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-            .ticket { 
-                background: white; 
-                width: 95%; 
-                max-width: 850px; 
-                height: 460px; 
-                border-radius: 30px; 
-                display: flex; 
-                overflow: hidden; 
-                box-shadow: 0 25px 50px rgba(0,0,0,0.1); 
-                margin-top: 30px;
-                border: 1px solid #d1eef7;
-            }
-            
-            .stub { 
-                background: var(--navy); 
-                width: 200px; 
-                padding: 30px; 
-                color: white; 
-                display: flex; 
-                flex-direction: column; 
-                border-right: 3px dashed #87CEEB; 
-            }
+            /* DESIGN TICKET BASEADO NA IMAGEM */
+            .ticket { background: white; width: 95%; max-width: 850px; height: 460px; border-radius: 25px; display: flex; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.15); margin-top: 10px; }
+            .stub { background: var(--navy); width: 220px; padding: 30px; color: white; display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.4); }
+            .seat-big { font-size: 80px; font-weight: 900; margin: 20px 0; }
             
             .main { flex: 1; display: flex; flex-direction: column; }
+            .header { background: var(--sky-blue); color: white; padding: 20px; text-align: center; font-size: 26px; font-weight: 800; letter-spacing: 8px; text-transform: uppercase; }
             
-            .header { 
-                background: var(--sky-blue); 
-                color: white; 
-                padding: 15px; 
-                text-align: center; 
-                font-size: 28px; 
-                font-weight: 800; 
-                letter-spacing: 5px;
-            }
+            .info-grid { padding: 35px 45px; display: grid; grid-template-columns: 1.3fr 1fr; flex: 1; }
+            .label { color: #BBB; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
             
-            .info-grid { 
-                padding: 30px; 
-                display: grid; 
-                grid-template-columns: 1.2fr 1fr; 
-                flex: 1;
-                background: linear-gradient(to bottom, #ffffff, #f0fbff);
-            }
-            
-            .label { color: var(--sky-blue); font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
             .display-area { margin-bottom: 20px; }
+            .flapper .digit { background-color: #111 !important; color: var(--yellow) !important; border-radius: 4px !important; }
             
-            .flapper .digit { background-color: #000 !important; color: var(--yellow) !important; border-radius: 3px !important; }
+            #compass { font-size: 50px; color: #FF8C00; transition: transform 1s; margin: 10px 0; }
             
-            #compass { font-size: 50px; color: #ff9800; transition: transform 1s; margin: 10px 0; }
+            /* BARRA PRETA DE STATUS */
+            .footer { background: #000; height: 75px; border-top: 5px solid var(--yellow); display: flex; align-items: center; justify-content: center; }
+            .status-msg { color: var(--yellow); font-family: 'Courier New', Courier, monospace; font-size: 19px; font-weight: bold; text-transform: uppercase; }
             
-            #barcode-link { display: block; margin-top: 10px; cursor: pointer; }
-
-            /* BARRA PRETA SLIM NO FUNDO */
-            .footer { 
-                background: #000; 
-                height: 60px; 
-                border-top: 4px solid var(--yellow); 
-                display: flex; 
-                align-items: center; 
-                justify-content: center;
-            }
-            .status-msg { color: var(--yellow); font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; }
+            #barcode-link { display: block; cursor: pointer; transition: transform 0.2s; margin-top: 10px; }
+            #barcode-link:hover { transform: scale(1.05); }
         </style>
     </head>
     <body>
         <div id="search-box">
-            <input type="text" id="addr" placeholder="Digite a sua localização...">
-            <button onclick="manualSearch()">ATIVAR</button>
+            <input type="text" id="addr" placeholder="GPS Indisponível. Digite sua localização para ativar...">
+            <button onclick="manualSearch()">ATIVAR RADAR</button>
         </div>
 
         <div class="ticket">
             <div class="stub">
-                <div style="font-size: 10px; opacity: 0.7;">BOARDING PASS</div>
-                <div style="font-size: 80px; font-weight: 900; margin: 20px 0;">19A</div>
-                <div style="margin-top: auto; border: 2px solid white; padding: 10px; text-align: center; font-weight: bold;">LIVE</div>
+                <div style="font-size: 12px; opacity: 0.8;">AIRPORT RADAR</div>
+                <div style="font-size: 14px; margin-top: 25px;">SEAT</div>
+                <div class="seat-big">19 A</div>
+                <div style="margin-top: auto; font-size: 16px; border: 2px solid white; padding: 10px; text-align: center; font-weight: bold;">LIVE</div>
             </div>
             <div class="main">
-                <div class="header">FLIGHT RADAR</div>
+                <div class="header">BOARDING PASS</div>
                 <div class="info-grid">
                     <div>
-                        <div class="label">Flight / Ident</div>
+                        <div class="label">Flight Ident (10 chars)</div>
                         <div class="display-area"><div id="f_call" class="flap"></div></div>
                         <div class="label">Distance (KM)</div>
                         <div class="display-area"><div id="f_dist" class="flap"></div></div>
                     </div>
-                    <div style="display:flex; flex-direction:column; align-items:center; border-left: 1px solid #e1f5fe; padding-left: 20px;">
-                        <div class="label">Aircraft Type</div>
+                    <div style="display:flex; flex-direction:column; align-items:center; border-left: 2px solid #F0F0F0; padding-left: 30px;">
+                        <div class="label">A/C Type (8 chars)</div>
                         <div class="display-area"><div id="f_type" class="flap"></div></div>
                         <div id="compass">↑</div>
-                        <a id="barcode-link" target="_blank"><svg id="barcode"></svg></a>
+                        <a id="barcode-link" target="_blank" title="Ver no Mapa">
+                            <svg id="barcode"></svg>
+                        </a>
                     </div>
                 </div>
                 <div class="footer">
-                    <div id="status-text" class="status-msg">SEARCHING...</div>
+                    <div id="status-text" class="status-msg">SCANNING MULTI-API...</div>
                 </div>
             </div>
         </div>
@@ -168,32 +114,45 @@ def index():
             const $fType = $('#f_type').flapper({width: 8, chars_preset: 'alphanum'});
 
             function start(lat, lon) {
-                $('#search-box').hide();
-                setInterval(() => {
+                $('#search-box').fadeOut();
+                const loop = () => {
                     fetch(`/api/data?lat=${lat}&lon=${lon}&t=${Date.now()}`)
                     .then(r => r.json()).then(data => {
                         if(data.found) {
-                            $('#status-text').text("ACQUIRED: " + data.callsign);
+                            $('#status-text').text("TARGET ACQUIRED: " + data.callsign);
                             $fCall.val(data.callsign).change();
                             $fDist.val(data.dist).change();
                             $fType.val(data.type).change();
                             document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                            JsBarcode("#barcode", data.callsign, {format: "CODE128", width: 1.2, height: 40, displayValue: false, lineColor: "#2A6E91"});
+                            
+                            // GERA CÓDIGO DE BARRAS E LINK
+                            JsBarcode("#barcode", data.callsign, {
+                                format: "CODE128", width: 1.3, height: 40, displayValue: false, lineColor: "#2A6E91"
+                            });
                             document.getElementById('barcode-link').href = `https://www.flightradar24.com/${data.callsign}`;
+                        } else {
+                            $('#status-text').text("SCANNING MULTI-API...");
                         }
                     });
-                }, 8000);
+                };
+                setInterval(loop, 8000);
+                loop();
             }
 
             function manualSearch() {
                 const q = document.getElementById('addr').value;
+                if(!q) return;
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
                 .then(r => r.json()).then(res => { if(res.length > 0) start(res[0].lat, res[0].lon); });
             }
 
             navigator.geolocation.getCurrentPosition(
                 p => start(p.coords.latitude, p.coords.longitude),
-                e => $('#search-box').css('display', 'flex')
+                e => {
+                    document.getElementById('search-box').style.display = 'flex';
+                    $('#status-text').text("GPS OFF - LOCALIZAÇÃO MANUAL REQUERIDA");
+                },
+                { timeout: 8000 }
             );
         </script>
     </body>
@@ -204,19 +163,25 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    try:
-        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, timeout=5).json()
-        if r.get('ac'):
-            ac = sorted([a for a in r['ac'] if a.get('lat')], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-            return jsonify({
-                "found": True, 
-                "callsign": ac.get('flight', 'N/A').strip(), 
-                "dist": str(round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1)), 
-                "type": ac.get('t', 'UNKN')[:8],
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon'])
-            })
-    except: pass
+    apis = [
+        {"url": f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"},
+        {"url": f"https://api.airplanes.live/v2/point/{lat_u}/{lon_u}/{RAIO_KM}"}
+    ]
+    for api in apis:
+        try:
+            r = requests.get(api["url"], timeout=4).json()
+            if r.get('ac'):
+                validos = [a for a in r['ac'] if a.get('lat')]
+                if validos:
+                    ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+                    return jsonify({
+                        "found": True, 
+                        "callsign": ac.get('flight', ac.get('call', 'N/A')).strip()[:10].upper(), 
+                        "dist": str(round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1)), 
+                        "type": ac.get('t', 'UNKN').upper()[:8],
+                        "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon'])
+                    })
+        except: continue
     return jsonify({"found": False})
 
 if __name__ == '__main__':
